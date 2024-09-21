@@ -67,10 +67,12 @@
     </div>
 
     <script>
+        const SHEET_ID = '1hVwmKzQlQUGnNsROgruDM6adGaXXZT9uVdhkz0x45Vs';  // Inserisci il tuo ID di Google Sheets
+        const API_KEY = 'AIzaSyDPXHsfUhMOIyJhy7yP9jzTgcNmARSispw';    // Inserisci la tua chiave API di Google
         const timeSlots = {
-            2: ['21:00', '22:00', '23:00'], // Martedì
-            3: ['20:00', '21:00', '22:00', '23:00'], // Mercoledì
-            5: ['20:00', '21:00', '22:00', '23:00'], // Venerdì
+            2: ['21:00', '22:00', '23:00'],  // Martedì
+            3: ['20:00', '21:00', '22:00', '23:00'],  // Mercoledì
+            5: ['20:00', '21:00', '22:00', '23:00'],  // Venerdì
         };
 
         let currentMonth = new Date().getMonth();
@@ -83,9 +85,14 @@
         function fetchBookedSlots(date) {
             // Simula una richiesta API per ottenere le fasce orarie prenotate
             return new Promise((resolve) => {
-                setTimeout(() => {
-                    resolve(['21:00']);  // Simula una fascia già prenotata
-                }, 500);
+                const formattedDate = date.toISOString().split('T')[0];
+                fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/Bookings!A2:C?key=${API_KEY}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const rows = data.values || [];
+                        const bookedSlots = rows.filter(row => row[0] === formattedDate).map(row => row[1]);
+                        resolve(bookedSlots);
+                    });
             });
         }
 
@@ -184,13 +191,27 @@
 
         function handleConfirmTimeSlot() {
             if (selectedTimeSlot && selectedDate) {
-                // Simula la conferma della prenotazione
-                setTimeout(() => {
-                    alert('Prenotazione confermata!');
-                    document.getElementById('confirmation').style.display = 'block';
-                    document.getElementById('confirmedTimeSlot').textContent = `Fascia oraria confermata: ${selectedTimeSlot}`;
-                    timeSlotConfirmed = true;
-                }, 500);
+                const formattedDate = selectedDate.toISOString().split('T')[0];
+                const requestBody = {
+                    values: [[formattedDate, selectedTimeSlot, "Prenotato"]]
+                };
+
+                fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/Bookings!A2:C:append?valueInputOption=USER_ENTERED&key=${API_KEY}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestBody)
+                }).then(response => {
+                    if (response.ok) {
+                        alert('Prenotazione confermata!');
+                        document.getElementById('confirmation').style.display = 'block';
+                        document.getElementById('confirmedTimeSlot').textContent = `Fascia oraria confermata: ${selectedTimeSlot}`;
+                        timeSlotConfirmed = true;
+                    } else {
+                        alert('Errore nella prenotazione.');
+                    }
+                });
             }
         }
 
