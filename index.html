@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendario Prenotazioni</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ccc;
+            text-align: center;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        .btn {
+            padding: 8px 12px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .btn.disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Calendario Prenotazioni</h1>
+    <p>Seleziona una fascia oraria disponibile per prenotare:</p>
+
+    <table id="calendarTable">
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Ora Inizio</th>
+                <th>Ora Fine</th>
+                <th>Disponibilità</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Le righe saranno aggiunte dinamicamente -->
+        </tbody>
+    </table>
+
+    <script>
+        const SHEET_ID = 'your_google_sheet_id'; // Inserisci il tuo ID di Google Sheets
+        const API_KEY = 'your_google_api_key';   // Inserisci la tua chiave API di Google
+        const range = 'Calendario!A2:D';         // Intervallo dati del foglio di lavoro
+
+        // Funzione per leggere i dati da Google Sheets e popolare la tabella
+        function loadCalendar() {
+            fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}?key=${API_KEY}`)
+                .then(response => response.json())
+                .then(data => {
+                    const tableBody = document.getElementById('calendarTable').getElementsByTagName('tbody')[0];
+                    tableBody.innerHTML = '';  // Svuota la tabella prima di aggiornarla
+
+                    const rows = data.values;
+                    rows.forEach((row, index) => {
+                        const newRow = tableBody.insertRow();
+                        const dateCell = newRow.insertCell(0);
+                        const startTimeCell = newRow.insertCell(1);
+                        const endTimeCell = newRow.insertCell(2);
+                        const actionCell = newRow.insertCell(3);
+
+                        dateCell.innerText = row[0];
+                        startTimeCell.innerText = row[1];
+                        endTimeCell.innerText = row[2];
+
+                        const button = document.createElement('button');
+                        button.className = 'btn';
+                        button.innerText = row[3] === 'Prenotato' ? 'Prenotato' : 'Prenota';
+                        button.disabled = row[3] === 'Prenotato';
+                        button.classList.toggle('disabled', row[3] === 'Prenotato');
+
+                        if (row[3] !== 'Prenotato') {
+                            button.addEventListener('click', () => {
+                                prenotaFascia(index + 2);  // La riga inizia da 2 nel foglio
+                            });
+                        }
+
+                        actionCell.appendChild(button);
+                    });
+                });
+        }
+
+        // Funzione per aggiornare lo stato della fascia oraria su Google Sheets
+        function prenotaFascia(rowNumber) {
+            const updateData = {
+                values: [["Prenotato"]]
+            };
+
+            fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/Calendario!D${rowNumber}:D${rowNumber}?valueInputOption=USER_ENTERED&key=${API_KEY}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(updateData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert('Fascia oraria prenotata con successo!');
+                loadCalendar();  // Ricarica il calendario aggiornato
+            });
+        }
+
+        // Carica il calendario quando la pagina è pronta
+        document.addEventListener('DOMContentLoaded', loadCalendar);
+    </script>
+
+</body>
+</html>
